@@ -15,6 +15,29 @@
         "type": "github"
       }
     },
+    "nix-bubblewrap": {
+      "inputs": {
+        "flake-utils": [
+          "flake-utils"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1679263436,
+        "narHash": "sha256-7eAb+tiOV8gpmF6gGvWKQd7gDhnb1hZ6q990ZxxoqnY=",
+        "owner": "JTKBowers",
+        "repo": "nix-bubblewrap",
+        "rev": "c4f3d0cff26ee5ab7b2b22bb2c2e3636ceb7e3e9",
+        "type": "github"
+      },
+      "original": {
+        "owner": "JTKBowers",
+        "repo": "nix-bubblewrap",
+        "type": "github"
+      }
+    },
     "nixlib": {
       "locked": {
         "lastModified": 1679187309,
@@ -69,6 +92,7 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
+        "nix-bubblewrap": "nix-bubblewrap",
         "nixos-generators": "nixos-generators",
         "nixpkgs": "nixpkgs"
       }

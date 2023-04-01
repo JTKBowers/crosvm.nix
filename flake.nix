@@ -6,17 +6,24 @@
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    nix-bubblewrap = {
+      url = "github:JTKBowers/nix-bubblewrap";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
   };
   outputs = {
     self,
     nixpkgs,
     nixos-generators,
     flake-utils,
+    nix-bubblewrap,
     ...
   }:
     flake-utils.lib.eachDefaultSystem (
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
+        wrapPackage = nix-bubblewrap.lib.wrapPackage pkgs;
       in {
         packages = rec {
           iso = nixos-generators.nixosGenerate {
@@ -49,7 +56,16 @@
             '';
           };
 
-          default = run-vm;
+          default = wrapPackage {
+            name = "run-vm";
+            pkg = run-vm;
+            extraArgs = [
+              "--dev /dev"
+              "--dev-bind /dev/kvm /dev/kvm"
+              "--proc /proc"
+              "--tmpfs /var/empty"
+            ];
+          };
         };
       }
     );
