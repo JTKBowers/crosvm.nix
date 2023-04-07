@@ -21,6 +21,10 @@
     };
   };
 
+  networking.dhcpcd.enable = false;
+  documentation.man.enable = false;
+  documentation.nixos.enable = false;
+
   boot.initrd.kernelModules = [
     "squashfs"
     "virtio_blk"
