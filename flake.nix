@@ -50,22 +50,24 @@
             ];
           };
 
-          run-vm = stdenv.mkDerivation {
-            name = "run-vm";
+          run-vm = extraArgs:
+            stdenv.mkDerivation {
+              name = "run-vm";
 
-            buildInputs = with pkgs; [p7zip];
+              buildInputs = with pkgs; [p7zip];
 
-            unpackPhase = "true";
+              unpackPhase = "true";
 
-            installPhase = ''
-              mkdir -p "$out/bin"
-              echo "#! ${stdenv.shell}" >> "$out/bin/run-vm"
-              echo "exec ${crosvm}/bin/crosvm run -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" >> "$out/bin/run-vm"
-              chmod 0755 "$out/bin/run-vm"
-            '';
-          };
+              installPhase = ''
+                mkdir -p "$out/bin"
+                echo "#! ${stdenv.shell}" >> "$out/bin/run-vm"
+                echo "exec ${crosvm}/bin/crosvm run -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" '${extraArgs}' >> "$out/bin/run-vm"
+                chmod 0755 "$out/bin/run-vm"
+              '';
+            };
 
-          default = run-vm;
+          default = run-vm "";
+          args-from-cli = run-vm "$1";
         };
       }
     );
