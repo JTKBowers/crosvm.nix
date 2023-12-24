@@ -35,6 +35,21 @@
 
           stdenv = pkgs.stdenv;
 
+          crosvm = wrapPackage {
+            name = "crosvm";
+            pkg = pkgs.crosvm;
+
+            extraDepPkgs = [
+              vmImage
+            ];
+            extraArgs = [
+              "--dev /dev"
+              "--dev-bind /dev/kvm /dev/kvm"
+              "--proc /proc"
+              "--tmpfs /var/empty"
+            ];
+          };
+
           run-vm = stdenv.mkDerivation {
             name = "run-vm";
 
@@ -45,21 +60,12 @@
             installPhase = ''
               mkdir -p "$out/bin"
               echo "#! ${stdenv.shell}" >> "$out/bin/run-vm"
-              echo "exec ${pkgs.crosvm}/bin/crosvm run -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" >> "$out/bin/run-vm"
+              echo "exec ${crosvm}/bin/crosvm run -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" >> "$out/bin/run-vm"
               chmod 0755 "$out/bin/run-vm"
             '';
           };
 
-          default = wrapPackage {
-            name = "run-vm";
-            pkg = run-vm;
-            extraArgs = [
-              "--dev /dev"
-              "--dev-bind /dev/kvm /dev/kvm"
-              "--proc /proc"
-              "--tmpfs /var/empty"
-            ];
-          };
+          default = run-vm;
         };
       }
     );
