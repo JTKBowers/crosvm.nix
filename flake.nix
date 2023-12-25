@@ -34,31 +34,41 @@
         pkgs = nixpkgs.legacyPackages.${system};
         wrapPackage = nix-bubblewrap.lib.wrapPackage pkgs;
 
-        vmImage = nixos-generators.nixosGenerate {
-          system = "x86_64-linux";
-          customFormats = {"crosvm" = import ./crosvmFormat.nix;};
-          format = "crosvm";
-          modules = [self.outputs.nixosModules.exampleConfiguration];
-        };
+        buildImage = configuration:
+          nixos-generators.nixosGenerate {
+            system = "x86_64-linux";
+            customFormats = {"crosvm" = import ./crosvmFormat.nix;};
+            format = "crosvm";
+            modules = [configuration];
+          };
 
         stdenv = pkgs.stdenv;
 
-        crosvm = wrapPackage {
-          name = "crosvm";
-          pkg = pkgs.crosvm;
+        crosvm = {vmImage}:
+          wrapPackage {
+            name = "crosvm";
+            pkg = pkgs.crosvm;
 
-          extraDepPkgs = [
-            vmImage
-          ];
-          extraArgs = [
-            "--dev /dev"
-            "--dev-bind /dev/kvm /dev/kvm"
-            "--proc /proc"
-            "--tmpfs /var/empty"
-          ];
-        };
+            extraDepPkgs = [
+              vmImage
+            ];
+            extraArgs = [
+              "--dev /dev"
+              "--dev-bind /dev/kvm /dev/kvm"
+              "--proc /proc"
+              "--tmpfs /var/empty"
+            ];
+          };
 
-        run-vm = extraArgs:
+        run-vm = {
+          configuration,
+          extraArgs,
+        }: let
+          vmImage = buildImage configuration;
+          crosvmPackage = crosvm {
+            vmImage = vmImage;
+          };
+        in
           stdenv.mkDerivation {
             name = "run-vm";
 
@@ -67,14 +77,21 @@
             installPhase = ''
               mkdir -p "$out/bin"
               echo "#! ${stdenv.shell}" >> "$out/bin/run-vm"
-              echo "exec ${crosvm}/bin/crosvm run -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" '${extraArgs}' >> "$out/bin/run-vm"
+              echo "exec ${crosvmPackage}/bin/crosvm run -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" '${extraArgs}' >> "$out/bin/run-vm"
               chmod 0755 "$out/bin/run-vm"
             '';
           };
       in {
         packages = {
-          default = run-vm "";
-          args-from-cli = run-vm "$1";
+          run-vm = run-vm;
+          default = run-vm {
+            extraArgs = "";
+            configuration = self.outputs.nixosModules.exampleConfiguration;
+          };
+          args-from-cli = run-vm {
+            extraArgs = "$1";
+            configuration = self.outputs.nixosModules.exampleConfiguration;
+          };
         };
       }
     );
