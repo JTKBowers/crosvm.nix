@@ -4,11 +4,9 @@
   ...
 }: {
   imports = [
-    # "${toString modulesPath}/installer/cd-dvd/iso-image.nix"
     ./crosvmModule.nix
   ];
 
-  # crosvm.kernelPath = "${config.system.build.toplevel}";
   boot.loader.grub.enable = false;
   fileSystems = {
     "/" = {

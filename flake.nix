@@ -54,8 +54,6 @@
             stdenv.mkDerivation {
               name = "run-vm";
 
-              buildInputs = with pkgs; [p7zip];
-
               unpackPhase = "true";
 
               installPhase = ''
