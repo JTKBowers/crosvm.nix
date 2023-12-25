@@ -20,7 +20,16 @@
     nix-bubblewrap,
     ...
   }:
-    flake-utils.lib.eachDefaultSystem (
+    {
+      nixosModules = {
+        baseSystem = ./crosvm.nix;
+
+        exampleConfiguration = ./configuration.nix;
+
+        default = self.outputs.nixosModules.baseSystem;
+      };
+    }
+    // flake-utils.lib.eachDefaultSystem (
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
         wrapPackage = nix-bubblewrap.lib.wrapPackage pkgs;
@@ -30,7 +39,7 @@
             system = "x86_64-linux";
             customFormats = {"crosvm" = import ./crosvmFormat.nix;};
             format = "crosvm";
-            modules = [./configuration.nix];
+            modules = [self.outputs.nixosModules.exampleConfiguration];
           };
 
           stdenv = pkgs.stdenv;
