@@ -49,12 +49,15 @@
             name = "crosvm";
             pkg = pkgs.crosvm;
 
+            shareNet = true;
+
             extraDepPkgs = [
               vmImage
             ];
             extraArgs = [
               "--dev /dev"
               "--dev-bind /dev/kvm /dev/kvm"
+              "--dev-bind /dev/net/ /dev/net/"
               "--proc /proc"
               "--tmpfs /var/empty"
             ];
