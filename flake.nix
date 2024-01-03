@@ -44,7 +44,10 @@
 
         stdenv = pkgs.stdenv;
 
-        crosvm = {vmImage}:
+        crosvm = {
+          vmImage,
+          vmmConfig,
+        }:
           wrapPackage {
             name = "crosvm";
             pkg = pkgs.crosvm;
@@ -53,6 +56,7 @@
 
             extraDepPkgs = [
               vmImage
+              vmmConfig
             ];
             extraArgs = [
               "--dev /dev"
@@ -65,11 +69,13 @@
 
         run-vm = {
           configuration,
-          extraArgs,
+          vmmConfig ? {}, # See https://crosvm.dev/book/running_crosvm/options.html#configuration-files
         }: let
           vmImage = buildImage configuration;
+          vmmConfigJson = (pkgs.formats.json {}).generate "vmConfig.json" vmmConfig;
           crosvmPackage = crosvm {
             vmImage = vmImage;
+            vmmConfig = vmmConfigJson;
           };
         in
           stdenv.mkDerivation {
@@ -80,7 +86,7 @@
             installPhase = ''
               mkdir -p "$out/bin"
               echo "#! ${stdenv.shell}" >> "$out/bin/run-vm"
-              echo "exec ${crosvmPackage}/bin/crosvm run -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" '${extraArgs}' >> "$out/bin/run-vm"
+              echo "exec ${crosvmPackage}/bin/crosvm run --cfg ${vmmConfigJson} -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" >> "$out/bin/run-vm"
               chmod 0755 "$out/bin/run-vm"
             '';
           };
@@ -88,12 +94,12 @@
         packages = {
           run-vm = run-vm;
           default = run-vm {
-            extraArgs = "";
             configuration = self.outputs.nixosModules.exampleConfiguration;
-          };
-          args-from-cli = run-vm {
-            extraArgs = "$1";
-            configuration = self.outputs.nixosModules.exampleConfiguration;
+            vmmConfig = {
+              mem = {
+                size = 2048;
+              };
+            };
           };
         };
       }
