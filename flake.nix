@@ -45,12 +45,21 @@
         crosvm = {
           vmImage,
           vmmConfig,
+          sharedDirs,
         }:
           wrapPackage {
             name = "crosvm";
             pkg = pkgs.crosvm;
 
             shareNet = true;
+
+            extraBindPaths =
+              builtins.map
+              (sharedDir: {
+                path = builtins.head (builtins.match "^([^\0\:]+):.*" sharedDir);
+                mode = "rw";
+              })
+              sharedDirs;
 
             extraDepPkgs = [
               vmImage
@@ -68,18 +77,22 @@
         run-vm = {
           configuration,
           vmmConfig ? {}, # See https://crosvm.dev/book/running_crosvm/options.html#configuration-files
+          sharedDirs ? [], # See https://crosvm.dev/book/devices/fs.html
         }: let
           vmImage = buildImage configuration;
           vmmConfigJson = (pkgs.formats.json {}).generate "vmConfig.json" vmmConfig;
           crosvmPackage = crosvm {
             vmImage = vmImage;
             vmmConfig = vmmConfigJson;
+            sharedDirs = sharedDirs;
           };
+          sharedDirArgs = builtins.concatStringsSep " " (map (dir: "--shared-dir ${dir}") sharedDirs);
         in
           pkgs.writeShellScriptBin "run-vm"
           ''
             exec ${crosvmPackage}/bin/crosvm run \
                 --cfg ${vmmConfigJson} \
+                ${sharedDirArgs} \
                 -b "${vmImage}/root.squashfs,root,ro" \
                 --initrd ${vmImage}/initrd \
                 ${vmImage}/bzImage \
