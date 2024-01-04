@@ -42,8 +42,6 @@
             modules = [configuration];
           };
 
-        stdenv = pkgs.stdenv;
-
         crosvm = {
           vmImage,
           vmmConfig,
@@ -78,18 +76,16 @@
             vmmConfig = vmmConfigJson;
           };
         in
-          stdenv.mkDerivation {
-            name = "run-vm";
-
-            unpackPhase = "true";
-
-            installPhase = ''
-              mkdir -p "$out/bin"
-              echo "#! ${stdenv.shell}" >> "$out/bin/run-vm"
-              echo "exec ${crosvmPackage}/bin/crosvm run --cfg ${vmmConfigJson} -b "${vmImage}/root.squashfs,root,ro" --initrd ${vmImage}/initrd ${vmImage}/bzImage" -p "boot.shell_on_fail" -p "init=$(cat ${vmImage}/init)" >> "$out/bin/run-vm"
-              chmod 0755 "$out/bin/run-vm"
-            '';
-          };
+          pkgs.writeShellScriptBin "run-vm"
+          ''
+            exec ${crosvmPackage}/bin/crosvm run \
+                --cfg ${vmmConfigJson} \
+                -b "${vmImage}/root.squashfs,root,ro" \
+                --initrd ${vmImage}/initrd \
+                ${vmImage}/bzImage \
+                -p "boot.shell_on_fail" \
+                -p "init=$(cat ${vmImage}/init)"
+          '';
       in {
         packages = {
           run-vm = run-vm;
