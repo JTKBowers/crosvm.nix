@@ -54,16 +54,24 @@
             shareNet = true;
 
             extraBindPaths =
-              builtins.map
-              (sharedDir: {
-                path = builtins.head (builtins.match "^([^\0\:]+):.*" sharedDir);
-                mode = "rw";
-              })
-              sharedDirs;
+              (builtins.map
+                (sharedDir: {
+                  path = sharedDir.path;
+                  mode = "rw";
+                })
+                sharedDirs)
+              ++ (
+                builtins.map
+                (block: {
+                  path = block.path;
+                  mode = "rw";
+                })
+                (vmmConfig.block or [])
+              );
 
             extraDepPkgs = [
               vmImage
-              vmmConfig
+              ((pkgs.formats.json {}).generate "vmConfig.json" vmmConfig)
             ];
             extraArgs = [
               "--dev /dev"
@@ -83,7 +91,7 @@
           vmmConfigJson = (pkgs.formats.json {}).generate "vmConfig.json" vmmConfig;
           crosvmPackage = crosvm {
             vmImage = vmImage;
-            vmmConfig = vmmConfigJson;
+            vmmConfig = vmmConfig;
             sharedDirs = sharedDirs;
           };
           sharedDirArgs = builtins.concatStringsSep " " (map (dir: "--shared-dir ${dir}") sharedDirs);
