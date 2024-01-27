@@ -6,18 +6,12 @@
       url = "github:nix-community/nixos-generators";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nix-bubblewrap = {
-      url = "github:JTKBowers/nix-bubblewrap";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
-    };
   };
   outputs = {
     self,
     nixpkgs,
     nixos-generators,
     flake-utils,
-    nix-bubblewrap,
     ...
   }:
     {
@@ -32,7 +26,6 @@
     // flake-utils.lib.eachDefaultSystem (
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
-        wrapPackage = nix-bubblewrap.lib.wrapPackage pkgs;
 
         buildImage = configuration:
           nixos-generators.nixosGenerate {
@@ -42,58 +35,14 @@
             modules = [configuration];
           };
 
-        crosvm = {
-          vmImage,
-          vmmConfig,
-          sharedDirs,
-        }:
-          wrapPackage {
-            name = "crosvm";
-            pkg = pkgs.crosvm;
-
-            shareNet = true;
-
-            extraBindPaths =
-              (builtins.map
-                (sharedDir: {
-                  path = sharedDir.path;
-                  mode = "rw";
-                })
-                sharedDirs)
-              ++ (
-                builtins.map
-                (block: {
-                  path = block.path;
-                  mode = "rw";
-                })
-                (vmmConfig.block or [])
-              );
-
-            extraDepPkgs = [
-              vmImage
-              ((pkgs.formats.json {}).generate "vmConfig.json" vmmConfig)
-            ];
-            extraArgs = [
-              "--dev /dev"
-              "--dev-bind /dev/kvm /dev/kvm"
-              "--dev-bind /dev/net/ /dev/net/"
-              "--proc /proc"
-              "--tmpfs /var/empty"
-            ];
-          };
-
         run-vm = {
+          crosvmPackage ? pkgs.crosvm,
           configuration,
           vmmConfig ? {}, # See https://crosvm.dev/book/running_crosvm/options.html#configuration-files
           sharedDirs ? [], # See https://crosvm.dev/book/devices/fs.html
         }: let
           vmImage = buildImage configuration;
           vmmConfigJson = (pkgs.formats.json {}).generate "vmConfig.json" vmmConfig;
-          crosvmPackage = crosvm {
-            vmImage = vmImage;
-            vmmConfig = vmmConfig;
-            sharedDirs = sharedDirs;
-          };
           sharedDirArgs = builtins.concatStringsSep " " (map (dir: "--shared-dir ${dir}") sharedDirs);
         in
           pkgs.writeShellScriptBin "run-vm"
