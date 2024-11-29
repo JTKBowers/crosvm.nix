@@ -27,12 +27,16 @@
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        buildImage = configuration:
+        buildImage = {
+          configuration,
+          specialArgs ? {},
+        }:
           nixos-generators.nixosGenerate {
             system = "x86_64-linux";
             customFormats = {"crosvm" = import ./crosvmFormat.nix;};
             format = "crosvm";
             modules = [configuration];
+            inherit specialArgs;
           };
 
         run-vm = {
@@ -40,8 +44,9 @@
           configuration,
           vmmConfig ? {}, # See https://crosvm.dev/book/running_crosvm/options.html#configuration-files
           sharedDirs ? [], # See https://crosvm.dev/book/devices/fs.html
+          specialArgs ? {},
         }: let
-          vmImage = buildImage configuration;
+          vmImage = buildImage {inherit configuration specialArgs;};
           vmmConfigJson = (pkgs.formats.json {}).generate "vmConfig.json" vmmConfig;
           sharedDirArgs = builtins.concatStringsSep " " (map (dir: "--shared-dir ${dir}") sharedDirs);
         in
