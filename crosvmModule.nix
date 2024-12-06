@@ -11,14 +11,12 @@
     binPath = with pkgs;
       lib.makeBinPath (
         [
-          config.system.build.nixos-install
-          config.system.build.nixos-enter
           nix
           pkgs.squashfsTools
         ]
         ++ stdenv.initialPath
       );
-    name = "rootFS";
+    name = "root.squashfs";
 
     nativeBuildInputs = [pkgs.squashfsTools];
 
@@ -30,16 +28,13 @@
       root="$PWD/root"
       mkdir -p $root
 
-      # Provide a Nix database so that nixos-install can copy closures.
+      # Provide a Nix database
       export NIX_STATE_DIR=$TMPDIR/state
       nix-store --load-db < ${closureInfo}/registration
 
-      chmod 755 "$TMPDIR"
-      echo "running nixos-install..."
-      nixos-install --root $root --no-bootloader --no-root-passwd \
-        --system ${config.system.build.toplevel} \
-        "--no-channel-copy" \
-        --substituters ""
+      nix-env --store "$PWD/root" --substituters "" \
+        --extra-substituters "auto?trusted=1" \
+        -p "$PWD"/root/nix/var/nix/profiles/system --set ${config.system.build.toplevel}
 
       # Build it into a squashfs image
       mksquashfs $root/nix/* $out \
@@ -53,13 +48,14 @@ in {
       name = "crosvmImage";
 
       unpackPhase = "true";
+      dontFixup = true;
       installPhase = ''
         mkdir -p $out
-          cp '${config.system.build.toplevel}/kernel' $out/bzImage
-          cp '${config.system.build.toplevel}/initrd' $out/initrd
-          echo '${config.system.build.toplevel}/init' > $out/init
-          cp '${config.system.build.toplevel}/kernel-params' $out/kernel-params
-          cp '${root}' $out/root.squashfs
+        ln -s '${config.system.build.toplevel}/kernel' $out/bzImage
+        ln -s '${config.system.build.toplevel}/initrd' $out/initrd
+        echo '${config.system.build.toplevel}/init' > $out/init
+        ln -s '${config.system.build.toplevel}/kernel-params' $out/kernel-params
+        ln -s '${root}' $out/root.squashfs
       '';
     };
   };
