@@ -23,6 +23,7 @@
     nativeBuildInputs = [pkgs.squashfsTools];
 
     unpackPhase = "true";
+    dontFixup = true;
     installPhase = ''
       export PATH=$binPath
 
