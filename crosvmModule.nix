@@ -35,11 +35,24 @@
       nix-env --store "$PWD/root" --substituters "" \
         --extra-substituters "auto?trusted=1" \
         -p "$PWD"/root/nix/var/nix/profiles/system --set ${config.system.build.toplevel}
+      # nix --extra-experimental-features "nix-command flakes" \
+      #   copy --to "$root" ${config.system.build.toplevel}
+      # nix-copy-closure --to "$root" ${config.system.build.toplevel}
+      file_args="$root/nix/*"
+
+      # Pass the file paths directly to mksquashfs
+      # Doesn't work as the resulting paths have /nix in the front
+      # e.g. we want the paths inside the image to be /store/whatever instead of /nix/store/whatever
+      # This causes issues as we can't mount the squashfs to the root without creating a bunch of mounts for /var,/etc etc
+      # Note: we may be able to get squashfs to output the right files by using a chroot or file namespace
+      # mapfile -t <${pkgs.writeClosure [config.system.build.toplevel]}
+      # file_args="''${MAPFILE[@]}"
 
       # Build it into a squashfs image
-      mksquashfs $root/nix/* $out \
+      mksquashfs $file_args $out \
         -no-hardlinks -keep-as-directory -all-root -b 1048576 -comp xz -Xdict-size 100% \
         -processors $NIX_BUILD_CORES
+        # -no-strip
     '';
   };
 in {
