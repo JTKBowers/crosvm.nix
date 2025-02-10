@@ -44,18 +44,20 @@
           configuration,
           vmmConfig ? {}, # See https://crosvm.dev/book/running_crosvm/options.html#configuration-files
           sharedDirs ? [], # See https://crosvm.dev/book/devices/fs.html
+          extraArguments ? [],
           specialArgs ? {},
         }: let
           vmImage = buildImage {inherit configuration specialArgs;};
           vmmConfigJson = (pkgs.formats.json {}).generate "vmConfig.json" vmmConfig;
-          sharedDirArgs = builtins.concatStringsSep " " (map (dir: "--shared-dir ${dir}") sharedDirs);
+          sharedDirArgs = map (dir: "--shared-dir ${dir}") sharedDirs;
+          extraArguments' = builtins.concatStringsSep " " (extraArguments ++ sharedDirArgs);
         in
           pkgs.writeShellScriptBin "run-vm"
           ''
             exec ${crosvmPackage}/bin/crosvm run \
                 --cfg ${vmmConfigJson} \
-                ${sharedDirArgs} \
                 -b "${vmImage}/root.squashfs,root,ro" \
+                ${extraArguments'} \
                 --initrd ${vmImage}/initrd \
                 ${vmImage}/bzImage \
                 -p "boot.shell_on_fail" \
